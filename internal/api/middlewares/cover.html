@@ -1,0 +1,510 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/elSuperRiton/mediamanager/internal/api/middlewares/contenttype.go (90.0%)</option>
+				
+				<option value="file1">github.com/elSuperRiton/mediamanager/internal/api/middlewares/jwt.go (0.0%)</option>
+				
+				<option value="file2">github.com/elSuperRiton/mediamanager/internal/api/middlewares/requesttimer.go (77.8%)</option>
+				
+				<option value="file3">github.com/elSuperRiton/mediamanager/internal/api/middlewares/uploadsize.go (76.9%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package middlewares
+
+import (
+        "fmt"
+        "net/http"
+        "strings"
+
+        "github.com/elSuperRiton/mediamanager/pkg/utils"
+)
+
+type (
+        // ContentTypeOptions allows for intanciating the ContentType
+        // middleware with specific configuration
+        // It is intended to be passed through the NewContentType function
+        ContentTypeOptions struct {
+                ContentType string
+                Strict      bool
+        }
+        // contentType defines the instanciable part of the
+        // contentType middleware
+        contentType struct {
+                contentType string
+                strict      bool
+        }
+)
+
+// NewContentType allocates a new Contentype and returns the handler
+// associated with it
+func NewContentType(options *ContentTypeOptions) MiddlewareFunc <span class="cov8" title="1">{
+        ct := &amp;contentType{
+                contentType: options.ContentType,
+                strict:      options.Strict,
+        }
+
+        return ct.Hanlder
+}</span>
+
+// isOfContentType simply verifies that the request Content-Type header
+// matched the one provided in the configuration
+// If strict set to true then a total equality match will be performed else
+// only the first part of the header will be checked against configuration
+func (m *contentType) isOfContentType(r *http.Request) bool <span class="cov8" title="1">{
+        contentTypeHeader := r.Header.Get("Content-Type")
+
+        if !m.strict </span><span class="cov8" title="1">{
+                return strings.Split(contentTypeHeader, ";")[0] == m.contentType
+        }</span>
+
+        <span class="cov0" title="0">return contentTypeHeader == m.contentType</span>
+}
+
+// Hanlder is a middleware enforcing a specific Content-Type header
+// It simply checks that the request passed in has a specific header set and
+// returns a http.StatusBadRequest in case it isn't
+func (m *contentType) Hanlder(next http.Handler) http.Handler <span class="cov8" title="1">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                if ok := m.isOfContentType(r); !ok </span><span class="cov8" title="1">{
+                        utils.RenderErr(
+                                w,
+                                r,
+                                fmt.Sprintf("Request should be of type %v, got %v", m.contentType, r.Header.Get("Content-Type")),
+                                http.StatusBadRequest,
+                        )
+                }</span>
+
+                <span class="cov8" title="1">next.ServeHTTP(w, r)</span>
+        })
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package middlewares
+
+import (
+        "fmt"
+        "net/http"
+
+        jwt "github.com/dgrijalva/jwt-go"
+        "github.com/elSuperRiton/mediamanager/pkg/utils"
+)
+
+type (
+        JWTConfig struct {
+                SigningKey []byte // Secret signing key
+                HeaderKey  []byte // Name of the key ( ex: []byte{"Authorization"} )
+        }
+        jwtMdl struct {
+                signingKey []byte
+                headerKey  []byte
+        }
+)
+
+// NewJWT returns a
+func NewJWT(options *JWTConfig) MiddlewareFunc <span class="cov0" title="0">{
+        j := &amp;jwtMdl{
+                signingKey: options.SigningKey,
+                headerKey:  options.HeaderKey,
+        }
+
+        return j.Handler
+}</span>
+
+// hasJWTToken is a helper method to retrieve JWT token in header of a request
+func (j *jwtMdl) hasJWTToken(r *http.Request) (token string, hasToken bool) <span class="cov0" title="0">{
+        if token := r.Header.Get(string(j.headerKey)); token != "" </span><span class="cov0" title="0">{
+                return token, true
+        }</span>
+
+        <span class="cov0" title="0">return "", false</span>
+}
+
+// isValidJWT is a helper method for parsing token and verifying it's validity
+// it uses "github.com/dgrijalva/jwt-go" under to hood to perform most tasks
+func (j *jwtMdl) isValidJWT(jwtToken string) (isValidToken bool, parsingError error) <span class="cov0" title="0">{
+        token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) </span><span class="cov0" title="0">{
+                if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("There was an error")
+                }</span>
+                <span class="cov0" title="0">return j.signingKey, nil</span>
+        })
+
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+
+        <span class="cov0" title="0">if token.Valid </span><span class="cov0" title="0">{
+                return true, nil
+        }</span>
+
+        <span class="cov0" title="0">return false, nil</span>
+}
+
+func (j *jwtMdl) Handler(next http.Handler) http.Handler <span class="cov0" title="0">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                token, hasToken := j.hasJWTToken(r)
+                if !hasToken </span><span class="cov0" title="0">{
+                        utils.RenderErr(
+                                w,
+                                r,
+                                "No token provided in request",
+                                http.StatusUnauthorized,
+                        )
+
+                        return
+                }</span>
+
+                <span class="cov0" title="0">isValid, err := j.isValidJWT(token)
+                if err != nil </span><span class="cov0" title="0">{
+                        utils.RenderErr(
+                                w,
+                                r,
+                                "error validating token",
+                                http.StatusUnauthorized,
+                        )
+                        return
+                }</span>
+
+                <span class="cov0" title="0">if !isValid </span><span class="cov0" title="0">{
+                        utils.RenderErr(
+                                w,
+                                r,
+                                "The provided token is invalid",
+                                http.StatusUnauthorized,
+                        )
+
+                        return
+                }</span>
+
+                <span class="cov0" title="0">next.ServeHTTP(w, r)</span>
+        })
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package middlewares
+
+import (
+        "net/http"
+        "time"
+)
+
+const responseTimeHeader = "X-Mediamanager-Time"
+
+// requestTimerInterceptor implements the http.ResponseWriter
+// interface and keeps a reference to the original http.ResponseWriter
+// in order to write the request time before request compliton
+type requestTimerInterceptor struct {
+        startTime time.Time
+        w         http.ResponseWriter
+}
+
+func newRequestTimer(w http.ResponseWriter) *requestTimerInterceptor <span class="cov8" title="1">{
+        return &amp;requestTimerInterceptor{
+                startTime: time.Now(),
+                w:         w,
+        }
+}</span>
+
+func (r *requestTimerInterceptor) Write(b []byte) (int, error) <span class="cov0" title="0">{
+        return r.w.Write(b)
+}</span>
+
+func (r *requestTimerInterceptor) Header() http.Header <span class="cov0" title="0">{
+        return r.w.Header()
+}</span>
+
+func (r *requestTimerInterceptor) WriteHeader(code int) <span class="cov8" title="1">{
+        duration := time.Now().Sub(r.startTime)
+        r.w.Header().Set(responseTimeHeader, duration.String())
+        r.w.WriteHeader(code)
+}</span>
+
+// RequestTimer intercepts request and writes out the time
+// it took for them to complete in the header
+func RequestTimer(next http.Handler) http.Handler <span class="cov8" title="1">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                reqTimer := newRequestTimer(w)
+                next.ServeHTTP(reqTimer, r)
+        }</span>)
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package middlewares
+
+import (
+        "bytes"
+        "io"
+        "io/ioutil"
+        "net/http"
+        "strconv"
+        "sync"
+
+        "github.com/elSuperRiton/mediamanager/errors"
+        "github.com/elSuperRiton/mediamanager/pkg/utils"
+)
+
+const exceededContentSize = "The file you're trying to upload is too large"
+
+type (
+        // MaxUploadSizeOptions defines the configuration
+        // options available for the MaxUploadSize middleware
+        MaxUploadSizeOptions struct {
+                AllowedFileType []string
+                Size            int64
+        }
+
+        // MaxUploadSize defines the instanciable part of the
+        // MaxUploadSize middleware
+        maxUploadSize struct {
+                MaxUploadSizeOptions
+                reader io.ReadCloser
+                read   int64
+        }
+)
+
+// NewMaxUploadSize returns a MaxUploadSizeMiddleware
+//
+// MaxUploadSizeMiddleware sets the maximum allowed size for a request body.
+// In case the request body is above the limit it'll return a 413 error code
+// The MaxUploadSizeMiddleware checks the body length based on the 'Content-Length'
+// header and reading the body content
+func NewMaxUploadSize(options *MaxUploadSizeOptions) MiddlewareFunc <span class="cov8" title="1">{
+        maxUploadSize := &amp;maxUploadSize{MaxUploadSizeOptions: *options}
+        return maxUploadSize.Handler
+}</span>
+
+// isContentLengthBelowLimit reads the Content-Length Header and checks
+// if it's value is below the maximum allowed size
+// If the Header value cannot be parsed to int64 it returns an error
+func (m *maxUploadSize) isContentLengthBelowLimit(r *http.Request) (isvalid bool, parseErr error) <span class="cov8" title="1">{
+
+        rawContentLengthVal := r.Header.Get("Content-Length")
+        if rawContentLengthVal != "" </span><span class="cov0" title="0">{
+
+                n, err := strconv.ParseInt(rawContentLengthVal, 10, 64)
+                if err != nil </span><span class="cov0" title="0">{
+                        return false, err
+                }</span>
+
+                <span class="cov0" title="0">if n &lt; m.Size </span><span class="cov0" title="0">{
+                        return true, nil
+                }</span>
+        }
+
+        <span class="cov8" title="1">return true, nil</span>
+}
+
+func (m *maxUploadSize) isBodyBelowLimit(r *http.Request, w http.ResponseWriter, pool *sync.Pool) (bodyBytes []byte, bodyReadingErr error) <span class="cov8" title="1">{
+        // Limit size by reading actual body length
+        // Here we call Reset before reading content in
+        // order to make sure the instance of MaxUploadSize
+        // is clean for usage
+        mx := pool.Get().(*maxUploadSize)
+        mx.Reset(r.Body)
+        defer pool.Put(mx)
+
+        b := make([]byte, m.Size)
+        for </span><span class="cov8" title="1">{
+                _, err := mx.Read(b)
+                if err != nil </span><span class="cov8" title="1">{
+                        if err != io.EOF </span><span class="cov8" title="1">{
+                                mx.Close()
+                                return b, err
+                        }</span>
+
+                        <span class="cov8" title="1">break</span>
+                }
+        }
+
+        <span class="cov8" title="1">return b, nil</span>
+}
+
+// Handler is a middleware to enforce the maximum body size of a request
+// It first checks the Content-Length header against the provided configuration
+// prior to reading body into a buffer that cannot exceed the provided limit size
+// It returns a http.StatusBadRequest in case the request body size is too large
+func (m *maxUploadSize) Handler(next http.Handler) http.Handler <span class="cov8" title="1">{
+
+        pool := maxUploadSizePool(m.MaxUploadSizeOptions)
+
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+
+                // limit size based on content length
+                // Note that as Content-Length can be tempered with we simply check
+                // if it's value exceeds the max allowed size
+                if ok, err := m.isContentLengthBelowLimit(r); !ok || err != nil </span><span class="cov0" title="0">{
+                        if err != nil </span><span class="cov0" title="0">{
+                                utils.RenderErr(w, r, err.Error(), http.StatusBadRequest)
+                                return
+                        }</span>
+
+                        <span class="cov0" title="0">utils.RenderErr(w, r, exceededContentSize, http.StatusRequestEntityTooLarge)
+                        return</span>
+                }
+
+                // Limit size by reading actual body length
+                // Here we call Reset before reading content in
+                // order to make sure the instance of MaxUploadSize
+                // is clean for usage
+                <span class="cov8" title="1">mx := pool.Get().(*maxUploadSize)
+                mx.Reset(r.Body)
+                defer pool.Put(mx)
+
+                b, err := m.isBodyBelowLimit(r, w, &amp;pool)
+                if err != nil </span><span class="cov8" title="1">{
+                        switch err.(type) </span>{
+                        case errors.ErrFileTooLarge:<span class="cov8" title="1">
+                                utils.RenderErr(
+                                        w,
+                                        r,
+                                        err.Error(),
+                                        http.StatusRequestEntityTooLarge,
+                                )
+                                return</span>
+                        default:<span class="cov0" title="0">
+                                utils.RenderErr(
+                                        w,
+                                        r,
+                                        err.Error(),
+                                        http.StatusInternalServerError,
+                                )
+                                return</span>
+                        }
+                }
+
+                <span class="cov8" title="1">r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+                next.ServeHTTP(w, r)</span>
+        })
+}
+
+// Read method reads from a slice of byte (here intended to be request body)
+// and errors out if the number of bytes read exceeds the allowed body size
+func (m *maxUploadSize) Read(b []byte) (n int, err error) <span class="cov8" title="1">{
+        n, err = m.reader.Read(b)
+        m.read += int64(n)
+
+        if m.read &gt; m.Size </span><span class="cov8" title="1">{
+                return n, errors.NewErrFileTooLarge(m.Size)
+        }</span>
+
+        <span class="cov8" title="1">return</span>
+}
+
+// Close cleans up the memory allocated to reading MaxUploadSize reader
+func (m *maxUploadSize) Close() error <span class="cov8" title="1">{
+        return m.reader.Close()
+}</span>
+
+// Reset allows for reseting MaxUploadSize before placing it back in the pool
+func (m *maxUploadSize) Reset(readCloser io.ReadCloser) <span class="cov8" title="1">{
+        m.reader = readCloser
+        m.read = 0
+}</span>
+
+// maxUploadSizePool return a new sync.Pool setup with an instance of
+// MaxUploadSize middleware
+// It enables us to save on memory by reusing instances of MaxUploadSize
+func maxUploadSizePool(options MaxUploadSizeOptions) sync.Pool <span class="cov8" title="1">{
+        return sync.Pool{
+                New: func() interface{} </span><span class="cov8" title="1">{
+                        return &amp;maxUploadSize{MaxUploadSizeOptions: options}
+                }</span>,
+        }
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

@@ -1,0 +1,24 @@
+port: :8080
+timeout: 30s
+maxuploadsize: 10
+pluginsFolder: ../plugins/
+uploaders:
+  # S3 Uploader
+  # path*
+  # path*
+  - type: s3
+    path: pathToUploadTo
+    secretId: mysecretID
+    secretKey: mysecretKey
+    region: myRegion
+    bucket: myBucket
+    serverSideEncryption: AES256
+    contentDisposition: attachement
+    storageClass: STANDARD
+    acl: private
+    pluginName: default.so
+  # File System uploader
+  - type: fs
+    path: defaultfs
+    folder: ./uploadfolder/
+    pluginName: default.so
