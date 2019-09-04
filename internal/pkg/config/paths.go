@@ -1,33 +1,43 @@
 package config
 
-import "log"
+import (
+	"fmt"
+	"sync"
 
-// uploaderPathValidator is a map with validation function attached in order
-// to ensure uniqueness of path values
-type uploaderPathValidator map[string]uint8
+	"github.com/elSuperRiton/mediamanager/pkg/errors"
+)
 
-// validate makes sure an uploader path has been declared and that it is
-// unique
-func (u uploaderPathValidator) validate(uploaderPath, uploaderType string) {
-	if uploaderPath == "" {
-		log.Fatalf("path must be provided for uploader %v", uploaderType)
-	}
+var uploaderPathValidatorMtx = sync.RWMutex{}
 
-	u[uploaderPath]++
-	if u[uploaderPath] > 1 {
-		log.Fatalf("an uploader with a path of \"%v\" already exists", uploaderPath)
-	}
-}
+type (
+	// uploaderPathValidator is a map with validation function attached in order
+	// to ensure uniqueness of path values
+	uploaderPathValidator map[string]uint8
+	// configurableUploader is a helper type for validating a series of uploaders.
+	// It wraps a map[string]interface{} awaiting at least a "type" value and a "path"
+	// value
+	configurableUploader map[string]interface{}
+)
 
-type configurableUploader map[string]interface{}
+func (c configurableUploader) validatePath(validator uploaderPathValidator) error {
+	uploaderPathValidatorMtx.Lock()
+	defer uploaderPathValidatorMtx.Unlock()
 
-func (c configurableUploader) validatePath(validator uploaderPathValidator) configurableUploader {
 	// grab uploader path and validate
 	path, ok := c["path"].(string)
 	if !ok {
-		log.Fatalf("path must be of type string for uploader %v", c["type"])
+		return fmt.Errorf("path must be of type string for uploader %v", c["type"])
 	}
 
-	validator.validate(path, c["type"].(string))
-	return c
+	if path == "" {
+		return fmt.Errorf("path must be defined for uploader %v", c["type"])
+	}
+
+	validator[path]++
+
+	if validator[path] > 1 {
+		return errors.ConfigurableUploaderPathErr(path)
+	}
+
+	return nil
 }

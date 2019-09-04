@@ -3,11 +3,11 @@
 package config
 
 import (
+	"context"
 	"io/ioutil"
-	"log"
+	"sync"
 
 	"github.com/elSuperRiton/mediamanager/pkg/models"
-	"github.com/elSuperRiton/mediamanager/pkg/uploader"
 
 	"gopkg.in/go-playground/validator.v9"
 	yaml "gopkg.in/yaml.v2"
@@ -42,15 +42,38 @@ func NewConfig(fileLocation []byte) (uploaderConf *models.MediaManagerConfig, er
 
 	// Validate configuration
 	pathValidator := uploaderPathValidator(make(map[string]uint8))
-	Conf.InitializedUploaders = make(map[string]uploader.Uploader, len(Conf.Uploaders))
+	var wg sync.WaitGroup
+	errorChan := make(chan error, 1)
+	_, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
+	// Validatate and initialize uploaders
+	wg.Add(len(Conf.Uploaders))
 	for _, uploader := range Conf.Uploaders {
-		c := configurableUploader(uploader)
-		c.validatePath(pathValidator).loadPlugin().initUploader()
+		go func(uploader map[string]interface{}) {
+			defer wg.Done()
+
+			c := configurableUploader(uploader)
+
+			if err := c.validatePath(pathValidator); err != nil {
+				errorChan <- err
+				cancel()
+			}
+			if err := c.loadPlugin(Conf.PluginsFolder); err != nil {
+				errorChan <- err
+				cancel()
+			}
+			if err := c.initUploader(Conf); err != nil {
+				errorChan <- err
+				cancel()
+			}
+		}(uploader)
 	}
 
+	wg.Wait()
+
 	if err := validate.Struct(Conf); err != nil {
-		log.Fatal(err)
+		return Conf, err
 	}
 
 	return Conf, nil

@@ -9,15 +9,6 @@ import (
 	"github.com/elSuperRiton/mediamanager/pkg/utils"
 )
 
-// func init() {
-// 	u, err := s3.NewUploader(*config.Conf.UploaderS3Conf)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	uploader.InitUploader(u)
-// }
-
 // MediasFindAll returns the list of all medias uploaded through the
 // media manager
 func MediasFindAll(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +34,7 @@ func MediasUpload(w http.ResponseWriter, r *http.Request) {
 	// Upload file using uploader package
 	// Please note that the package initialization happends in the above
 	// init function
-	if err := repository.conf.InitializedUploaders[uploaderType].Upload(file, fileHeader); err != nil {
+	if err := uploader.Upload(uploaderType, file, fileHeader); err != nil {
 
 		// Cast error with awserr package
 		if aerr, ok := err.(awserr.Error); ok {
@@ -76,7 +67,6 @@ func MediasUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Upload is ok
-	w.WriteHeader(http.StatusOK)
 	utils.RenderData(
 		w,
 		r,
@@ -96,12 +86,13 @@ func MediasUpload(w http.ResponseWriter, r *http.Request) {
 // Please note that it uses the GetS3PresignedPutURL which only works
 // if using the s3 driver for the uploader package
 func MediasUploadURL(w http.ResponseWriter, r *http.Request) {
+	uploaderType := r.Context().Value("uploader").(string)
 
 	// TODO: Validate query
 	fileName := r.URL.Query().Get("fileName")
 	fileType := r.URL.Query().Get("fileType")
 
-	uri, err := uploader.GetS3PresignedPutURL(15*time.Minute, fileName, fileType)
+	uri, err := uploader.GetS3PresignedPutURL(uploaderType, 15*time.Minute, fileName, fileType)
 	if err != nil {
 		utils.RenderErr(w, r, err.Error(), http.StatusInternalServerError)
 		return

@@ -28,6 +28,8 @@ schema:
       - -w
     run:
       status: true
+      args:
+      - -race
   watcher:
     extensions:
     - go

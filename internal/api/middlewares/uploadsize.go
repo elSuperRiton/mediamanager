@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/elSuperRiton/mediamanager/errors"
+	"github.com/elSuperRiton/mediamanager/pkg/errors"
 	"github.com/elSuperRiton/mediamanager/pkg/utils"
 )
 

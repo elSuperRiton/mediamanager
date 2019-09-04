@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"mime/multipart"
 	"strconv"
 	"time"
@@ -14,6 +13,5 @@ func GetFileName(file *multipart.FileHeader) (newFileName string, err error) {
 
 // PostUpload is executed after a successfull upload
 func PostUpload() error {
-	fmt.Println("postupload")
 	return nil
 }

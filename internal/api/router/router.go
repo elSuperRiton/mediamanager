@@ -5,6 +5,7 @@ import (
 	"github.com/elSuperRiton/mediamanager/internal/api/middlewares"
 	"github.com/elSuperRiton/mediamanager/pkg/models"
 	"github.com/go-chi/chi"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const filesLocation = "../../../public/web"
@@ -24,6 +25,9 @@ func New(c *models.MediaManagerConfig) *chi.Mux {
 	// Global Mdls
 	mainRouter.Use(middlewares.RequestTimer)
 	mainRouter.Use(getCorsMiddleware())
+
+	// Register Prometheus
+	mainRouter.Handle("/metrics", promhttp.Handler())
 
 	// Index
 	mainRouter.Get("/", getAssetHandler())

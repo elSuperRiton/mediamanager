@@ -2,38 +2,47 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"mime/multipart"
 	"plugin"
+
+	"github.com/elSuperRiton/mediamanager/pkg/errors"
 )
 
-func (c configurableUploader) loadPlugin() configurableUploader {
+type (
+	pluginGetFileNameSignature func(file *multipart.FileHeader) (newFileName string, err error)
+	// Plugin defines the set of function needed to have a compliant
+	// plugin loaded
+	Plugin interface {
+		GetFileName(file *multipart.FileHeader) (newFileName string, err error)
+	}
+)
+
+func (c configurableUploader) loadPlugin(pluginFolder string) error {
 	// grab uploader plugin
-	if c["pluginName"] != nil {
+	if c != nil {
 		pluginName, ok := c["pluginName"].(string)
-		fmt.Println(Conf.PluginsFolder)
 		if !ok {
-			log.Fatalf("plugin must be of type string for uploader %v", c["type"])
+			return fmt.Errorf("plugin must be of type string for uploader %v", c["type"])
 		}
 
-		p, err := plugin.Open(Conf.PluginsFolder + pluginName)
+		p, err := plugin.Open(pluginFolder + pluginName)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		symbol, err := p.Lookup("GetFileName")
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		getNameFunc, ok := symbol.(func(file *multipart.FileHeader) (newFileName string, err error))
 		if !ok {
-			panic("Plugin has no 'func(file *multipart.FileHeader) (newFileName string, err error)' function")
+			return errors.ErrWrongGetFileNameImplementation(pluginName)
 		}
 
 		c["plugin"] = p
 		c["GetFileName"] = getNameFunc
 	}
 
-	return c
+	return nil
 }
